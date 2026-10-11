@@ -5,7 +5,7 @@ Repositorio para un script Terraria que da items al jugador.
 
 Script en Python para ver y modificar el inventario de un personaje de **Terraria en Android**, desde Termux, con menú, nombres de ítems en español y respaldos automáticos.
 
-[!CAUTION] **Experimental.** Probado solo en un dispositivo (Android 10, Terraria 1.4.x de Android). Haz siempre copia de seguridad. Úsalo solo en tus partidas de un jugador: modificar personajes en servidores ajenos puede causar baneos.
+> [!CAUTION] **Experimental.** Probado solo en un dispositivo (Android 10, Terraria 1.4.x de Android). Haz siempre copia de seguridad. Úsalo solo en tus partidas de un jugador: modificar personajes en servidores ajenos puede causar baneos.
 
 ## Qué hace
 
