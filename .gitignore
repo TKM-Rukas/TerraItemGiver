@@ -1,0 +1,6 @@
+*.plr
+*.bak
+items.json
+respaldos_terraria/
+dump.bin
+__pycache__/
