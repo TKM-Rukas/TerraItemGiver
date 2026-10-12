@@ -59,13 +59,61 @@ def buscar_items():
     return os.path.join(HOME, "items.json")
 
 
+NORM = {}  # nombre sin tildes/mayúsculas por ID (búsqueda rápida)
+TTY = sys.stdout.isatty()
+ESPIRAL = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+BARRA_W = 18
+
+
+def barra(frac):
+    """Barra tipo pip/rich: ━━━━━╸━━━━"""
+    frac = max(0.0, min(1.0, frac))
+    if frac >= 1:
+        return f"{G}{'━' * BARRA_W}{X}"
+    lleno = int(frac * BARRA_W)
+    resto = BARRA_W - lleno - 1
+    return f"{C}{'━' * lleno}╸{X}{D}{'━' * resto}{X}"
+
+
+def progreso(frac, hecho, total, paso):
+    esp = ESPIRAL[paso % len(ESPIRAL)] if frac < 1 else "✔"
+    col = C if frac < 1 else G
+    sys.stdout.write(f"\r {col}{esp}{X} {barra(frac)} {B}{int(frac * 100):>3}%{X} "
+                     f"{D}{hecho}/{total}{X}\033[K")
+    sys.stdout.flush()
+
+
 def cargar_items():
     ruta = buscar_items()
-    try:
-        with open(ruta, encoding="utf-8") as f:
-            return {int(k): v for k, v in json.load(f).items()}
-    except Exception:
+    if not os.path.isfile(ruta):
         print(f"{Y}⚠ No hay lista de ítems ({ruta}). Solo verás IDs.")
+        print(f"  Para tener nombres, ejecuta: python generar_items.py{X}")
+        return dict(BASICOS)
+    try:
+        print(f" {C}◈{X} {B}Cargando lista de ítems{X} {D}· {os.path.basename(ruta)}{X}")
+        with open(ruta, encoding="utf-8") as f:
+            crudo = json.load(f)
+        total = len(crudo)
+        items = {}
+        cada = max(1, total // 40)
+        paso = 0
+        if TTY:
+            sys.stdout.write("\033[?25l")  # oculta el cursor mientras carga
+        try:
+            for n, (k, v) in enumerate(crudo.items(), 1):
+                items[int(k)] = v
+                if TTY and (n % cada == 0 or n == total):
+                    progreso(n / total, n, total, paso)
+                    paso += 1
+                    time.sleep(0.012)
+        finally:
+            if TTY:
+                sys.stdout.write("\033[?25h\n")
+                sys.stdout.flush()
+        print(f" {G}✔ {len(items)} ítems listos{X}")
+        return items
+    except Exception as e:
+        print(f"{Y}⚠ No pude leer la lista de ítems ({e}). Solo verás IDs.")
         print(f"  Para tener nombres, ejecuta: python generar_items.py{X}")
         return dict(BASICOS)
 
@@ -74,6 +122,8 @@ def recargar_items():
     global MAX_ID
     ITEMS.clear()
     ITEMS.update(cargar_items())
+    NORM.clear()
+    NORM.update({i: norm(n) for i, n in ITEMS.items()})
     MAX_ID = max(6000, max(ITEMS))
 
 
@@ -253,7 +303,7 @@ def elegir_item(cero=False):
         print(f"{R}✘ Escribe al menos 2 letras{X}")
         return None
     q = norm(t)
-    res = [(i, n) for i, n in sorted(ITEMS.items()) if q in norm(n)][:15]
+    res = [(i, n) for i, n in sorted(ITEMS.items()) if q in NORM.get(i, "")][:15]
     if not res:
         print(f"{R}✘ Sin resultados{X}")
         return None
@@ -375,15 +425,62 @@ def guardar(ruta, data, resp, base):
     return False
 
 
+def degradado(texto, colores=(51, 45, 39, 33, 99, 135, 171)):
+    """Colorea cada letra con un degradado (colores 256 de ANSI)."""
+    n = max(1, len(texto) - 1)
+    out = []
+    for k, ch in enumerate(texto):
+        if ch == " ":
+            out.append(ch)
+            continue
+        c = colores[round(k / n * (len(colores) - 1))]
+        out.append(f"\033[38;5;{c}m{ch}")
+    return "".join(out) + X
+
+
+def centrar(plano, coloreado):
+    izq = (INNER - len(plano)) // 2
+    der = INNER - len(plano) - izq
+    return f"{C}║{X}{' ' * izq}{coloreado}{' ' * der}{C}║{X}"
+
+
+def banner():
+    titulo = "✰  T E R R A R I A  ✰"
+    sub = "EDITOR DE INVENTARIO"
+    info = "Android · Termux"
+    vacio_ = f"{C}║{X}{' ' * INNER}{C}║{X}"
+    print(f"\n{C}╔{'═' * INNER}╗{X}")
+    print(vacio_)
+    print(centrar(titulo, f"{B}{degradado(titulo)}"))
+    print(centrar(sub, f"{B}{sub}{X}"))
+    print(centrar(info, f"{D}{info}{X}"))
+    print(vacio_)
+    print(f"{C}╚{'═' * INNER}╝{X}")
+
+
+MENU = [
+    ("1", "◈", "Ver inventario", C),
+    ("2", "✎", "Editar casilla", C),
+    ("3", "✚", "Añadir ítem", C),
+    ("4", "✔", "Guardar y salir", G),
+    ("5", "✖", "Salir sin guardar", R),
+    ("6", "↻", "Recargar lista de ítems", Y),
+]
+
+
 def menu():
-    print(f"\n{B}━━━━━━━━ MENÚ ━━━━━━━━{X}")
-    print("1 ▸ Ver inventario")
-    print("2 ▸ Editar casilla")
-    print("3 ▸ Añadir ítem")
-    print("4 ▸ Guardar y salir")
-    print("5 ▸ Salir sin guardar")
-    print("6 ▸ Recargar lista de ítems")
-    print(f"{D}(Ctrl+C cancela la acción actual){X}")
+    print(f"\n{C}╭─ {B}MENÚ{X}{C} {'─' * (INNER - 7)}╮{X}")
+    for num, icono, texto, col in MENU:
+        plano = f" {num}  {icono}  {texto}"
+        relleno = ' ' * (INNER - len(plano))
+        print(f"{C}│{X} {col}{B}{num}{X}  {col}{icono}{X}  {texto}{relleno}{C}│{X}")
+    print(f"{C}├{'─' * INNER}┤{X}")
+    if SUCIO[0]:
+        estado_plano, estado = " ● Cambios sin guardar", f" {Y}●{X} {Y}Cambios sin guardar{X}"
+    else:
+        estado_plano, estado = " ○ Sin cambios", f" {D}○ Sin cambios{X}"
+    print(f"{C}│{X}{estado}{' ' * (INNER - len(estado_plano))}{C}│{X}")
+    print(caja_abajo("Ctrl+C cancela la acción", C))
 
 
 def confirmar_salida():
@@ -398,10 +495,10 @@ def confirmar_salida():
 
 
 def main():
+    banner()
+    print()
     recargar_items()
-    print(f"{C}{B}╔{'═' * INNER}╗\n║{'✰  EDITOR DE TERRARIA':^{INNER}}║\n╚{'═' * INNER}╝{X}")
-    print(f"◈ Ítems cargados: {len(ITEMS)}")
-    print(f"{Y}Cierra Terraria por completo antes de continuar.{X}")
+    print(f"\n{Y}⚠ Cierra Terraria por completo antes de continuar.{X}")
 
     ruta = elegir_plr()
     if not os.access(ruta, os.W_OK):
@@ -455,7 +552,6 @@ def main():
                     break
             elif op == "6":
                 recargar_items()
-                print(f"◈ Ítems cargados: {len(ITEMS)}")
         except INTERRUPCION:
             print(f"\n{Y}↩ Acción cancelada.{X}")
 
