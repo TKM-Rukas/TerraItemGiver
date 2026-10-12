@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 KEY = "h3y_gUyZ".encode("utf-16le")  # clave pública conocida de los .plr
 HOME = os.path.expanduser("~")
-ITEMS_JSON = os.path.join(HOME, "items.json")
+ITEMS_JSON = os.path.join(HOME, "items-1.json")
 RESPALDOS = os.path.join(HOME, "respaldos_terraria")
 
 R, G, Y, C, B, X = "\033[91m", "\033[92m", "\033[93m", "\033[96m", "\033[1m", "\033[0m"
