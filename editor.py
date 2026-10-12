@@ -30,8 +30,8 @@ ITEMS = {}
 MAX_ID = 6000
 
 PATRONES = [
-    "/storage/emulated/*/Android/data/com.and.games505.*/Players/*.plr",
-    "/storage/emulated/*/Android/data/com.and.games505.*/files/Players/*.plr",
+    "/storage/emulated/0/Android/data/com.and.games505.*/Players/*.plr",
+    "/storage/emulated/0/Android/data/com.and.games505.*/files/Players/*.plr",
     "/storage/*/Android/data/com.and.games505.*/Players/*.plr",
     "/storage/*/com.and.games505.*/Players/*.plr",
 ]
